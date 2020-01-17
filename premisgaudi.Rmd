@@ -1,0 +1,258 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+## XII Premis Gaudí
+
+Descarregar els json de cadascuna de (les pàgines dels Premis Gaudí a IMDB)[https://www.imdb.com/event/ev0001574/2020/1/?ref_=ev_eh]. 
+
+Cal visualitzar el codi HTML de la pàgina i guardar el fragment que hi ha entre '"[{"awardName":"Gaudí Award","trivia":[],"categories":' i ","id":"awXXXXXX"}]" en format .json.
+
+```{r}
+library(jsonlite)
+
+gaudi09 <- read_json("gaudi09.json")
+g09 <- gaudi09[[1]][["categories"]]
+
+gaudi10 <- read_json("gaudi10.json")
+g10 <- gaudi10[[1]][["categories"]]
+
+gaudi11 <- read_json("gaudi11.json")
+g11 <- gaudi11[[1]][["categories"]]
+
+gaudi12 <- read_json("gaudi12.json")
+g12 <- gaudi12[[1]][["categories"]]
+
+gaudi13 <- read_json("gaudi13.json")
+g13 <- gaudi13[[1]][["categories"]]
+
+gaudi14 <- read_json("gaudi14.json")
+g14 <- gaudi14[[1]][["categories"]]
+
+gaudi15 <- read_json("gaudi15.json")
+g15 <- gaudi15[[1]][["categories"]]
+
+gaudi16 <- read_json("gaudi16.json")
+g16 <- gaudi16[[1]][["categories"]]
+
+gaudi17 <- read_json("gaudi17.json")
+g17 <- gaudi17[[1]][["categories"]]
+
+gaudi18 <- read_json("gaudi18.json")
+g18 <- gaudi18[[1]][["categories"]]
+
+gaudi19 <- read_json("gaudi19.json")
+g19 <- gaudi19[[1]][["categories"]]
+
+gaudi20 <- read_json("gaudi20.json")
+g20 <- gaudi20[[1]][["categories"]]
+
+gaudis <- list(g09, g10, g11, g12, g13, g14, g15, g16, g17, g18, g19, g20)
+```
+
+Convertir la llista en una taula només amb la informació que ens interesa: l'any, la categoria, el nom de la pel·lícula, el nominat (si n'hi ha més d'un, creem una línia per nominat, ja que ens interessa cadascuna de les persones i no només les produccions nominades) i si va ser o no guanyadora del premi.
+
+```{r}
+Any <- c()
+Categoria <- c()
+Peli <- c()
+Nominat <- c()
+Guanyador <- c()
+
+for (l in 1:length(gaudis)) {
+  for (k in 1:length(gaudis[[l]])) {
+    for (i in 1:length(gaudis[[l]][[k]][["nominations"]])) {
+      if (length(gaudis[[l]][[k]][["nominations"]][[i]][["secondaryNominees"]])>0) {
+        for (j in 1:length(gaudis[[l]][[k]][["nominations"]][[i]][["secondaryNominees"]])) {
+
+AnyN <- 2008+l
+CategoriaN <- gaudis[[l]][[k]][["categoryName"]]
+PeliN <- gaudis[[l]][[k]][["nominations"]][[i]][["primaryNominees"]][[1]][["name"]]
+GuanyadorN <- gaudis[[l]][[k]][["nominations"]][[i]][["isWinner"]]  
+NominatN <- gaudis[[l]][[k]][["nominations"]][[i]][["secondaryNominees"]][[j]][["name"]]
+
+Any <- c(Any, AnyN)
+Categoria <- c(Categoria, CategoriaN)
+Peli <- c(Peli, PeliN)
+Nominat <- c(Nominat, NominatN)
+Guanyador <- c(Guanyador, GuanyadorN)
+          }
+        } else {
+
+AnyN <- 2008+l
+CategoriaN <- gaudis[[l]][[k]][["categoryName"]]
+PeliN <- gaudis[[l]][[k]][["nominations"]][[i]][["primaryNominees"]][[1]][["name"]]
+GuanyadorN <- gaudis[[l]][[k]][["nominations"]][[i]][["isWinner"]]  
+NominatN <- ""
+
+Any <- c(Any, AnyN)
+Categoria <- c(Categoria, CategoriaN)
+Peli <- c(Peli, PeliN)
+Nominat <- c(Nominat, NominatN)
+Guanyador <- c(Guanyador, GuanyadorN)
+
+      }
+    }
+  }
+}
+
+gaudisdf <- data.frame(Any, Categoria, Peli, Nominat, Guanyador)
+```
+
+#### Neteja
+
+Els noms de les categories no són iguals per tots els anys. Amb el següent codi els substituïm pel nom utilitzat en l'edició del 2020.
+
+```{r}
+gaudisdf$CategoriaNet <- ifelse(gaudisdf$Categoria %in% c("Best Film (Millor Pel·lícula)", "Best Film in Catalan Language (Millor Pel·lícula en Llengua Catalana)"), "Millor Pel·lícula", ifelse(gaudisdf$Categoria %in% c("Best Non-Catalan Language Film (Millor Pel·lícula en Llengua no Catalana)"), "Millor Pel·lícula en llengua no catalana", ifelse(gaudisdf$Categoria %in% c("Best Director (Millor Director)"), "Millor Direcció", ifelse(gaudisdf$Categoria %in% c("Best Screenplay (Millor Guió)"), "Millor Guió", ifelse(gaudisdf$Categoria %in% c("Best Female Lead (Millor Protagonista Femenina)", "Best Lead Actress (Millor Actriu Protagonista)", "Best Performance by an Actress in a Leading Role (Millor Interpretació Femenina Principal)"), "Millor Protagonista Femenina", ifelse(gaudisdf$Categoria %in% c("Best Male Lead (Millor Protagonista Masculí)", "Best Lead Actor (Millor Actor Protagonista)", "Best Performance by an Actor in a Leading Role (Millor Interpretació Masculina Principal)"), "Millor Protagonista Masculí", ifelse(gaudisdf$Categoria %in% c("Best Production Manager (Millor direcció de producció)", "Best Production Manager (Millor Direcció de Producció)"), "Millor Direcció de Producció", ifelse(gaudisdf$Categoria %in% c("Best Documentary (Millor Pel·lícula Documental)"), "Millor Pel·lícula Documental", ifelse(gaudisdf$Categoria %in% c("Best Short Film (Millor Curtmetratge)"), "Millor Curtmetratge", ifelse(gaudisdf$Categoria %in% c("Best TV-Movie (Millor Pel·lícula per a Televisió)"), "Millor Pel·lícula per a Televisió", ifelse(gaudisdf$Categoria %in% c("Best Art Direction (Millor Direcció Artística)", "Best Production Design (Millor Direcció Artística)"), "Millor Direcció Artística", ifelse(gaudisdf$Categoria %in% c("Best Film Editing (Millor Muntatge)"), "Millor Muntatge", ifelse(gaudisdf$Categoria %in% c("Best Performance by an Actress in a Supporting Role (Millor interpretació femenina secundària)", "Best Supporting Actress (Millor Actriu Secundària)"), "Millor Actriu Secundària", ifelse(gaudisdf$Categoria %in% c("Best Performance by an Actor in a Supporting Role (Millor interpretació masculina secundària)", "Best Supporting Actor (Millor Actor Secundari)"), "Millor Actor Secundari", ifelse(gaudisdf$Categoria %in% c("Best Original Score (Millor Música Original)"), "Millor Música Original", ifelse(gaudisdf$Categoria %in% c("Best Cinematography (Millor Fotografia)", " Best Cinematography (Millor Fotografia)", "Best Cinematography (Millor Fotografía)"), "Millor Fotografia", ifelse(gaudisdf$Categoria %in% c("Best Costume Design (Millor vestuari)", "Best Costume Design (Millor Vestuari)"), "Millor Vestuari", ifelse(gaudisdf$Categoria %in% c("Best Sound (Millor So)"), "Millor So", ifelse(gaudisdf$Categoria %in% c("Best Special/Visual Effects (Millors Efectes Especials/Digitals)", "Best Visual Effects (Millors Efectes Visuals)", "Best Special Effects (Millors Efectes Especials)"), "Millors Efectes Visuals", ifelse(gaudisdf$Categoria %in% c("Best Make-Up and Hairstyles (Millor Maquillatge i Perruqueria)", "Best Makeup and Hairstyles (Millor Maquillatge i Perruqueria)"), "Millor Maquillatge i Perruqueria", ifelse(gaudisdf$Categoria %in% c("Best European Film (Millor Pel·lícula Europea)"), "Millor Pel·lícula Europea", ifelse(gaudisdf$Categoria %in% c("Best Animated Feature (Millor Pel·lícula d'Animació)"), "Millor Pel·lícula d'Animació", ifelse(gaudisdf$Categoria %in% c("Audience Award (Premi del Públic)"), "Premi del Públic", "NA")))))))))))))))))))))))
+```
+
+Extreiem les categories i anys en què el nom de la persona nominada i la pel·lícula estan en la columna equivocada i els tornem a ajuntar correctament.
+
+```{r}
+gaudiscanvi <- gaudisdf %>% filter(CategoriaNet %in% c("Millor Direcció", "Millor Actor Secundari", "Millor Actriu Secundària") | Categoria %in% c("Best Performance by an Actress in a Leading Role (Millor Interpretació Femenina Principal)", "Best Lead Actress (Millor Actriu Protagonista)", "Best Performance by an Actor in a Leading Role (Millor Interpretació Masculina Principal)", "Best Lead Actor (Millor Actor Protagonista)"))
+```
+
+```{r}
+gaudisok <- gaudisdf %>% filter(!CategoriaNet %in% c("Millor Direcció", "Millor Actor Secundari", "Millor Actriu Secundària")) %>% filter(!Categoria %in% c("Best Performance by an Actress in a Leading Role (Millor Interpretació Femenina Principal)", "Best Lead Actress (Millor Actriu Protagonista)", "Best Performance by an Actor in a Leading Role (Millor Interpretació Masculina Principal)", "Best Lead Actor (Millor Actor Protagonista)"))
+```
+
+```{r}
+colnames(gaudiscanvi) <- c("Any", "Categoria", "Nominat", "Peli", "Guanyador", "CategoriaNet")
+```
+
+```{r}
+gaudiscanvi$Peli <- as.character(gaudiscanvi$Peli)
+gaudiscanvi$Nominat <- as.character(gaudiscanvi$Nominat)
+gaudisok$Peli <- as.character(gaudisok$Peli)
+gaudisok$Nominat <- as.character(gaudisok$Nominat)
+
+gaudisdf <- bind_rows(gaudisok, gaudiscanvi)
+```
+
+#### Classificació per gènere
+
+```{r}
+library(dplyr)
+```
+
+Descarregar una base de noms per gènere de l'INE (jo he utilitzat els primers 1500 noms de dona i d'home més freqüents). En una columna els noms, en l'altra el gènere.
+
+```{r}
+noms <- read.csv("noms_ine.csv", encoding="UTF-8", stringsAsFactors = F)
+noms$Nom <- tolower(noms$Nom)
+```
+
+Creem una funció que capitalitzarà la primera lletra de cada nom perquè coincideixi amb la nostra BBDD. També eliminarem els noms repetits, ja que no utilitzem noms compostos.
+
+```{r}
+nomslist <- c()
+
+.simpleCap <- function(x) {
+    s <- strsplit(x, " ")[[1]]
+    paste(toupper(substring(s, 1, 1)), substring(s, 2),
+          sep = "", collapse = " ")
+}
+
+for (i in 1:length(noms$Nom)) {
+  xnom <- .simpleCap(noms$Nom[i])
+  nomslist <- c(nomslist, xnom)
+}
+
+noms$Nom <- nomslist
+noms <- distinct(noms)
+```
+
+Crear en el dataframe una columna només amb els noms de pila
+
+```{r}
+gaudisdf$NominatNom <- sub(" .*", "", gaudisdf$Nominat)
+```
+
+Treure els accents i caràcters especials de la columna de noms, perquè encaixin amb la llista de l'INE
+
+```{r}
+gaudisdf$NominatNom <- iconv(gaudisdf$NominatNom, from="UTF-8", to="ASCII//TRANSLIT")
+```
+
+Assignar gènere a cada nom de pila
+
+```{r}
+gaudisdf <- left_join(gaudisdf, noms, by=c("NominatNom"="Nom"))
+gaudisdf$Sexe <- as.factor(gaudisdf$Sexe)
+```
+
+```{r}
+View(gaudisdf %>% filter(is.na(Sexe)))
+```
+
+Tenim 229 noms no classificats, que extreiem i classifiquem a mà. Hi poden haver errors...
+
+```{r}
+write.csv(gaudisdf, "gaudis0920.csv", fileEncoding = "UTF8")
+```
+
+```{r}
+gaudisman <- read.csv("gaudis0920.csv", encoding = "UTF-8", stringsAsFactors = F)
+```
+
+#### Anàlisi
+
+Creem diferents taules resum dels percentatges per gènere, categoria i any. Ens serviran per extreure conclusions i crear les visualitzacions amb Flourish.
+
+```{r}
+gaudisgen <- gaudisman %>% group_by(Sexe) %>% summarise(N=n()) %>% mutate(Ptg=(N/sum(N))*100)
+
+gaudiswingen <- gaudisman %>% filter(Guanyador==T) %>% group_by(Sexe) %>% summarise(N=n()) %>% mutate(Ptg=(N/sum(N))*100)
+
+gaudiscategen <- gaudisman %>% group_by(CategoriaNet, Sexe) %>% summarise(N=n()) %>% mutate(Ptg=(N/sum(N))*100)
+
+gaudiscatewingen <- gaudisman %>% filter(Guanyador==T) %>% group_by(CategoriaNet, Sexe) %>% summarise(N=n()) %>% mutate(Ptg=(N/sum(N))*100)
+
+gaudisgensenseact <- gaudisman %>% filter(!CategoriaNet %in% c("Millor Actor Secundari", "Millor Actriu Secundària", "Millor Protagonista Femenina", "Millor Protagonista Masculí")) %>% group_by(Sexe) %>% summarise(N=n()) %>% mutate(Ptg=(N/sum(N))*100)
+
+gaudiswingensenseact <- gaudisman %>% filter(!CategoriaNet %in% c("Millor Actor Secundari", "Millor Actriu Secundària", "Millor Protagonista Femenina", "Millor Protagonista Masculí")) %>% filter(Guanyador==T) %>% group_by(Sexe) %>% summarise(N=n()) %>% mutate(Ptg=(N/sum(N))*100)
+```
+
+```{r}
+gaudisgen20 <- gaudisman %>% filter(Any==2020) %>% group_by(Sexe) %>% summarise(N=n()) %>% mutate(Ptg=(N/sum(N))*100)
+
+gaudiscategen20 <- gaudisman %>% filter(Any==2020) %>% group_by(CategoriaNet, Sexe) %>% summarise(N=n()) %>% mutate(Ptg=(N/sum(N))*100)
+
+gaudisgensenseact20 <- gaudisman %>% filter(Any==2020) %>% filter(!CategoriaNet %in% c("Millor Actor Secundari", "Millor Actriu Secundària", "Millor Protagonista Femenina", "Millor Protagonista Masculí")) %>% group_by(Sexe) %>% summarise(N=n()) %>% mutate(Ptg=(N/sum(N))*100)
+```
+
+```{r}
+gaudisgenanys <- gaudisman %>% group_by(Any, Sexe) %>% summarise(N=n()) %>% mutate(Ptg=(N/sum(N))*100)
+
+gaudisgensenseactanys <- gaudisman %>% filter(!CategoriaNet %in% c("Millor Actor Secundari", "Millor Actriu Secundària", "Millor Protagonista Femenina", "Millor Protagonista Masculí")) %>% group_by(Any, Sexe) %>% summarise(N=n()) %>% mutate(Ptg=(N/sum(N))*100)
+
+gaudiswingensenseactanys <- gaudisman %>% filter(!CategoriaNet %in% c("Millor Actor Secundari", "Millor Actriu Secundària", "Millor Protagonista Femenina", "Millor Protagonista Masculí")) %>% filter(Guanyador==T) %>% group_by(Any, Sexe) %>% summarise(N=n()) %>% mutate(Ptg=(N/sum(N))*100)
+```
+
+```{r}
+gaudisdiregenanys <- gaudisman %>% filter(CategoriaNet=="Millor Direcció") %>% group_by(Any, Sexe) %>% summarise(N=n()) %>% mutate(Ptg=(N/sum(N))*100)
+```
+
+```{r}
+gaudispelegenanys <- gaudisman %>% filter(CategoriaNet=="Millor Pel·lícula") %>% group_by(Any, Sexe) %>% summarise(N=n()) %>% mutate(Ptg=(N/sum(N))*100)
+```
+
+```{r}
+gaudispeldirgenanys <- gaudisman %>% filter(CategoriaNet %in% c("Millor Direcció", "Millor Pel·lícula")) %>% group_by(Any, Sexe) %>% summarise(N=n()) %>% mutate(Ptg=(N/sum(N))*100)
+```
+
+```{r}
+write.csv(gaudisgensenseactanys, "gaudis-evo-gen.csv", fileEncoding = "UTF8", row.names = F)
+write.csv(gaudiswingensenseactanys, "gaudis-evo-gen-guany.csv", fileEncoding = "UTF8", row.names = F)
+write.csv(gaudispeldirgenanys, "gaudis-evo-gen-dirpel.csv", fileEncoding = "UTF8", row.names = F)
+write.csv(gaudiscategen20, "gaudis-20-gen-cate.csv", fileEncoding = "UTF8", row.names = F)
+```
+
+```{r}
+gaudispeldirgenanysdetall <- gaudisman %>% filter(CategoriaNet %in% c("Millor Direcció", "Millor Pel·lícula"))
+
+write.csv(gaudispeldirgenanysdetall, "gaudis-evo-gen-dirpel-detall.csv", fileEncoding = "UTF8", row.names = F)
+```
+
